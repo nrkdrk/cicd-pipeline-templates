@@ -25,7 +25,11 @@ RUN composer install \
 # Now copy the application source and finish the installation
 # (this runs "artisan package:discover" and writes the package manifest).
 COPY . .
-RUN composer dump-autoload --no-dev --optimize --classmap-authoritative \
+
+# Any cache file copied from a developer's machine would reference dev-only
+# packages that do not exist in this --no-dev install. Start clean.
+RUN rm -f bootstrap/cache/*.php \
+    && composer dump-autoload --no-dev --optimize --classmap-authoritative \
     && php artisan package:discover --ansi
 
 ########################  Stage 2: runtime  ######################
@@ -34,10 +38,15 @@ FROM dunglas/frankenphp:1-php8.3-alpine AS runtime
 # The pipeline passes the Git tag here, so /health can report what is running.
 ARG APP_VERSION=dev
 
+# Sane defaults for a stateless container. Override any of these at runtime
+# (docker run -e SESSION_DRIVER=redis ...) when you have real infrastructure.
 ENV APP_VERSION=${APP_VERSION} \
     APP_ENV=production \
     APP_DEBUG=false \
     LOG_CHANNEL=stderr \
+    SESSION_DRIVER=cookie \
+    CACHE_STORE=file \
+    QUEUE_CONNECTION=sync \
     SERVER_NAME=:8080
 
 RUN install-php-extensions opcache pcntl pdo_mysql \
