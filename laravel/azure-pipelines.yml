@@ -1,0 +1,95 @@
+# Laravel pipeline for Azure DevOps - the same work as github-actions.yml.
+#
+# HOW TO USE
+#   1. Copy this file to your repository root as azure-pipelines.yml.
+#   2. Change workingDirectory below if the app is not in the repository root.
+#   3. Create a Docker Registry service connection and put its name in
+#      the containerRegistry variable.
+#
+# Differences worth knowing (also explained in the root README):
+#   - Azure DevOps has stages/jobs/steps; GitHub Actions has jobs/steps only.
+#   - Caching uses the Cache@2 task instead of actions/cache.
+#   - Image tags are built by hand here; metadata-action has no equivalent.
+
+trigger:
+  branches:
+    include: [main]
+  tags:
+    include: ['v*']
+
+pr:
+  branches:
+    include: [main]
+
+variables:
+  phpVersion: '8.3'
+  workingDirectory: '$(Build.SourcesDirectory)'
+  containerRegistry: 'my-registry-connection'
+  imageName: 'laravel-app'
+  # Version tags produce 1.2.3, everything else produces the short commit SHA.
+  imageTag: $[ replace(variables['Build.SourceBranch'], 'refs/tags/v', '') ]
+
+stages:
+  - stage: Test
+    displayName: Test
+    jobs:
+      - job: PHPUnit
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: |
+              sudo update-alternatives --set php /usr/bin/php$(phpVersion)
+              php -v
+            displayName: 'Select PHP $(phpVersion)'
+
+          - task: Cache@2
+            displayName: 'Cache Composer packages'
+            inputs:
+              key: 'composer | "$(Agent.OS)" | composer.lock'
+              restoreKeys: 'composer | "$(Agent.OS)"'
+              path: $(HOME)/.cache/composer
+
+          - script: composer install --prefer-dist --no-interaction --no-progress
+            workingDirectory: $(workingDirectory)
+            displayName: 'Install dependencies'
+
+          - script: |
+              cp .env.example .env
+              php artisan key:generate
+            workingDirectory: $(workingDirectory)
+            displayName: 'Prepare environment'
+
+          - script: php artisan test --log-junit $(Build.ArtifactStagingDirectory)/junit.xml
+            workingDirectory: $(workingDirectory)
+            displayName: 'Run tests'
+
+          - task: PublishTestResults@2
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: '$(Build.ArtifactStagingDirectory)/junit.xml'
+              testRunTitle: 'PHPUnit'
+
+  - stage: BuildAndPush
+    displayName: Build and push image
+    dependsOn: Test
+    # Pull request builds are tested but never published.
+    condition: >-
+      and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - job: Docker
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: Docker@2
+            displayName: 'Build and push'
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(containerRegistry)
+              repository: $(imageName)
+              dockerfile: $(workingDirectory)/Dockerfile
+              buildContext: $(workingDirectory)
+              tags: |
+                $(imageTag)
+                $(Build.SourceVersion)
+              arguments: '--build-arg APP_VERSION=$(imageTag)'
