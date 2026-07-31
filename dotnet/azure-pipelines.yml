@@ -1,0 +1,88 @@
+# .NET pipeline for Azure DevOps - the same work as github-actions.yml.
+#
+# HOW TO USE
+#   1. Copy this file to your repository root as azure-pipelines.yml.
+#   2. Change workingDirectory and testProject below.
+#   3. Create a Docker Registry service connection and put its name in
+#      the containerRegistry variable.
+
+trigger:
+  branches:
+    include: [main]
+  tags:
+    include: ['v*']
+
+pr:
+  branches:
+    include: [main]
+
+variables:
+  dotnetVersion: '8.0.x'
+  workingDirectory: '$(Build.SourcesDirectory)'
+  testProject: 'tests/PlatformApi.Tests/PlatformApi.Tests.csproj'
+  containerRegistry: 'my-registry-connection'
+  imageName: 'dotnet-api'
+  imageTag: $[ replace(variables['Build.SourceBranch'], 'refs/tags/v', '') ]
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+stages:
+  - stage: Test
+    displayName: Test
+    jobs:
+      - job: DotnetTest
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: UseDotNet@2
+            displayName: 'Select .NET $(dotnetVersion)'
+            inputs:
+              packageType: 'sdk'
+              version: $(dotnetVersion)
+
+          - task: Cache@2
+            displayName: 'Cache NuGet packages'
+            inputs:
+              key: 'nuget | "$(Agent.OS)" | **/*.csproj'
+              restoreKeys: 'nuget | "$(Agent.OS)"'
+              path: $(HOME)/.nuget/packages
+
+          - script: dotnet restore $(testProject)
+            workingDirectory: $(workingDirectory)
+            displayName: 'Restore dependencies'
+
+          - script: dotnet build $(testProject) --configuration Release --no-restore
+            workingDirectory: $(workingDirectory)
+            displayName: 'Build'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Run tests'
+            inputs:
+              command: 'test'
+              projects: $(testProject)
+              arguments: '--configuration Release --no-build'
+              workingDirectory: $(workingDirectory)
+              publishTestResults: true
+
+  - stage: BuildAndPush
+    displayName: Build and push image
+    dependsOn: Test
+    condition: >-
+      and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - job: Docker
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: Docker@2
+            displayName: 'Build and push'
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(containerRegistry)
+              repository: $(imageName)
+              dockerfile: $(workingDirectory)/Dockerfile
+              buildContext: $(workingDirectory)
+              tags: |
+                $(imageTag)
+                $(Build.SourceVersion)
+              arguments: '--build-arg APP_VERSION=$(imageTag)'
