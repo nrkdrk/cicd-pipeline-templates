@@ -1,20 +1,24 @@
-<!--
-  BERK: this file is YOUR writing exercise. The structure is here, the sentences
-  are not. Write each TODO in English, then I will correct it.
-  Rule of thumb for a README: WHAT it is -> WHY it exists -> HOW to use it.
--->
-
 # cicd-pipeline-templates
 
 ![laravel-example](https://github.com/nrkdrk/cicd-pipeline-templates/actions/workflows/laravel-example.yml/badge.svg)
 
-<!-- TODO (2-3 sentences): what is this repository, and who is it for? -->
+Copy-paste CI/CD pipeline templates for Laravel, .NET and React, written for both
+GitHub Actions and Azure DevOps. Each template tests the application, builds a
+production image and pushes it to a registry. It is for teams that maintain
+several projects in different stacks and do not want to write the same pipeline
+again every time.
 
 ## Why
 
-<!-- TODO (3-4 sentences): why copy-paste-ready templates instead of one generic
-     pipeline? Mention that every template is proven by a real example app in
-     this repository, not by a screenshot. -->
+A pipeline is easy to show and hard to trust. Most examples on the internet look
+correct, but nobody can tell whether they still run today. Every template here is
+proven by a real application in this repository: the badge above turns green
+because `examples/laravel-app` is tested, built into an image, started in a
+container and answered a request. Nothing is proven by a screenshot.
+
+The templates are also meant to be copied, not installed. You copy two files,
+change one variable, and the pipeline works. There is no shared action, no
+private registry and nothing to update later - the copy belongs to your project.
 
 ## What is inside
 
@@ -39,8 +43,12 @@ cp laravel/Dockerfile laravel/.dockerignore .
 
 ## GitHub Actions vs Azure DevOps
 
-<!-- TODO: keep the table, write one honest paragraph under it. Which one do you
-     reach for at work, and why? Interviewers love this kind of comparison. -->
+Both templates do the same work, and the differences are smaller than they look.
+GitHub Actions is shorter to write and its marketplace covers most of the work,
+which is why the examples here start with it. Azure DevOps gives more structure:
+stages, environments and approvals are part of the product, so larger teams with
+release processes often stay on it. The two exist side by side in this repository
+because teams rarely get to choose - the platform usually comes with the company.
 
 | | GitHub Actions | Azure DevOps |
 |---|---|---|
