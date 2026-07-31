@@ -37,10 +37,12 @@ You copy the files, change two variables, and the pipeline works.
   produces an image. This keeps the registry clean and stops untrusted code from
   publishing anything.
 
-<!-- BERK: one paragraph is missing here on purpose. Look at the "No config:cache
-     at build time" decision in ../laravel/README.md and write the .NET version of
-     the same idea, in your own words. The rule is identical in both stacks: the
-     image must not carry build-time configuration. Three sentences are enough. -->
+- **No environment settings inside the image.** The build machine does not know
+  the production environment. If the pipeline baked `appsettings.Production.json`
+  or connection strings into the image, that image would carry the wrong values
+  into every environment it is deployed to. The container reads its settings from
+  environment variables at startup instead, which is why the same image can run in
+  staging and in production without being rebuilt.
 
 ## Trade-offs
 

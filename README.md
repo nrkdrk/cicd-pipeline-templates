@@ -1,6 +1,7 @@
 # cicd-pipeline-templates
 
 ![laravel-example](https://github.com/nrkdrk/cicd-pipeline-templates/actions/workflows/laravel-example.yml/badge.svg)
+![dotnet-example](https://github.com/nrkdrk/cicd-pipeline-templates/actions/workflows/dotnet-example.yml/badge.svg)
 
 Copy-paste CI/CD pipeline templates for Laravel, .NET and React, written for both
 GitHub Actions and Azure DevOps. Each template tests the application, builds a
@@ -25,7 +26,7 @@ private registry and nothing to update later - the copy belongs to your project.
 | Stack | GitHub Actions | Azure DevOps | Dockerfile | Example app |
 |---|---|---|---|---|
 | Laravel (PHP 8.2 / 8.3) | ✅ | ✅ | ✅ multi-stage | `examples/laravel-app` |
-| .NET 8 | planned | planned | planned | planned |
+| .NET 8 | ✅ | ✅ | ✅ multi-stage | `examples/dotnet-api` |
 | React / Vite | planned | planned | planned | planned |
 
 ## Quick start
