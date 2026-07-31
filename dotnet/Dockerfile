@@ -9,7 +9,7 @@
 # The final image contains no compiler, no NuGet cache and no source code.
 
 ########################  Stage 1: build  ########################
-FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 
 WORKDIR /src
 
@@ -26,7 +26,7 @@ RUN dotnet publish src/PlatformApi/PlatformApi.csproj \
         --output /app/publish
 
 ########################  Stage 2: runtime  ######################
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 
 # The pipeline passes the Git tag here, so /health can report what is running.
 ARG APP_VERSION=dev
