@@ -9,7 +9,7 @@
 # The final image contains no Node, no node_modules and no source code.
 
 ########################  Stage 1: build  ########################
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 
 WORKDIR /app
 
