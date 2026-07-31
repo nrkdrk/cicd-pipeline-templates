@@ -1,0 +1,82 @@
+# This is react/github-actions.yml applied to examples/react-app.
+# The badge in the README points here, so the template is proven, not promised.
+
+name: react-example
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'examples/react-app/**'
+      - 'react/**'
+      - '.github/workflows/react-example.yml'
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  WORKING_DIRECTORY: examples/react-app
+
+jobs:
+  test:
+    name: Lint, test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: examples/react-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      - name: Lint
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run lint
+
+      - name: Test
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm test
+
+      - name: Build
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run build
+
+  build:
+    name: Build image
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the example image
+        uses: docker/build-push-action@v6
+        with:
+          context: examples/react-app
+          file: react/Dockerfile
+          push: false
+          load: true
+          tags: react-ci-example:ci
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the image
+        run: |
+          docker run -d --name example -p 8080:8080 react-ci-example:ci
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:8080/health; then echo "\nhealthy"; exit 0; fi
+            sleep 2
+          done
+          echo "container did not become healthy"; docker logs example; exit 1
