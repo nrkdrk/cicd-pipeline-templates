@@ -28,6 +28,11 @@ it did not have, developer cache files leaking into the build context, and a
 bundler shipping code that never type-checked. They are documented in
 [docs/failure-modes.md](docs/failure-modes.md).
 
+The pipelines pin every action to a commit SHA, scan images before publishing
+them, generate an SBOM and attest build provenance. The first scan turned the
+build red and produced three findings with three different answers - see
+[docs/supply-chain.md](docs/supply-chain.md).
+
 ## What is inside
 
 | Stack | GitHub Actions | Azure DevOps | Dockerfile | Example app |
