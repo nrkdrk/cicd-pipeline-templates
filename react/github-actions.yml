@@ -35,10 +35,10 @@ jobs:
     name: Lint, test and build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           # Caches ~/.npm between runs, keyed by the lock file.
@@ -73,12 +73,12 @@ jobs:
       packages: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
 
       - name: Log in to the container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -86,7 +86,7 @@ jobs:
 
       - name: Derive image tags
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -97,7 +97,7 @@ jobs:
 
       # Build locally first so the image can be inspected before anyone can pull it.
       - name: Build the image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
         with:
           context: ${{ env.WORKING_DIRECTORY }}
           file: ${{ env.WORKING_DIRECTORY }}/Dockerfile
@@ -111,7 +111,7 @@ jobs:
 
       # Fails the job on HIGH and CRITICAL findings, before the image is public.
       - name: Scan the image
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8  # master
         with:
           image-ref: scan-target:${{ github.sha }}
           format: table
@@ -121,7 +121,7 @@ jobs:
 
       # Answers "do we ship the affected package?" on the day a CVE lands.
       - name: Generate an SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610  # v0
         with:
           image: scan-target:${{ github.sha }}
           format: spdx-json
@@ -130,7 +130,7 @@ jobs:
       # Every layer is already cached from the build above, so this is fast.
       - name: Push the image
         id: push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
         with:
           context: ${{ env.WORKING_DIRECTORY }}
           file: ${{ env.WORKING_DIRECTORY }}/Dockerfile
@@ -144,14 +144,14 @@ jobs:
       # Records which repository, commit and workflow produced this image.
       #   gh attestation verify oci://ghcr.io/OWNER/REPO:TAG --owner OWNER
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac  # v3
 
       - name: Sign the image
         env:

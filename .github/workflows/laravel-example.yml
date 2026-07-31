@@ -11,7 +11,11 @@ on:
       - 'laravel/**'
       - '.github/workflows/laravel-example.yml'
   pull_request:
-    branches: [main]
+    branches: [ main ]
+    paths:
+      - 'examples/laravel-app/**'
+      - 'laravel/**'
+      - '.github/workflows/laravel-example.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

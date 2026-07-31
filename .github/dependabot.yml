@@ -1,7 +1,10 @@
 # Pinning actions to a SHA freezes them, which is the point - but frozen also
 # means unpatched. Dependabot understands SHA pins with a version comment and
-# opens a pull request when the tag moves, so the pin stays deliberate rather
-# than forgotten.
+# opens a pull request when the tag moves, so the pin stays deliberate.
+#
+# Only two ecosystems are watched. The example applications are evidence that
+# the templates work, not products with users: chasing their dev dependencies
+# produces noise and breaks the build on major bumps nobody asked for.
 
 version: 2
 updates:
@@ -9,9 +12,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 1
     groups:
-      # One pull request for all of them; reviewing ten separate bumps is how
-      # this ends up ignored.
       actions:
         patterns: ['*']
 
@@ -21,19 +23,8 @@ updates:
       - /dotnet
       - /react
     schedule:
-      interval: weekly
-
-  - package-ecosystem: composer
-    directory: /examples/laravel-app
-    schedule:
       interval: monthly
-
-  - package-ecosystem: nuget
-    directory: /examples/dotnet-api
-    schedule:
-      interval: monthly
-
-  - package-ecosystem: npm
-    directory: /examples/react-app
-    schedule:
-      interval: monthly
+    open-pull-requests-limit: 1
+    groups:
+      base-images:
+        patterns: ['*']

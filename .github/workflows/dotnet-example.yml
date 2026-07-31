@@ -11,7 +11,11 @@ on:
       - 'dotnet/**'
       - '.github/workflows/dotnet-example.yml'
   pull_request:
-    branches: [main]
+    branches: [ main ]
+    paths:
+      - 'examples/dotnet-api/**'
+      - 'dotnet/**'
+      - '.github/workflows/dotnet-example.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
