@@ -112,6 +112,16 @@ because teams rarely get to choose - the platform usually comes with the company
 Deployment to a cluster lives in [k8s-deploy-blueprints](#) (coming soon).
 Secret management is only referenced here, never implemented.
 
+## Copy or call?
+
+These templates are meant to be copied. The other option - one shared workflow
+called from many repositories - is also here, as
+`.github/workflows/reusable-laravel.yml`, because the choice is real and the
+answer changes with the number of repositories you maintain. Copying spreads the
+cost of change; sharing concentrates the cost of failure.
+[docs/reuse.md](docs/reuse.md) works through both, including the versioning trap
+that makes `@main` a bad idea.
+
 ## License
 
 MIT

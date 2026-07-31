@@ -1,0 +1,180 @@
+# A callable version of laravel/github-actions.yml.
+#
+# The rest of this repository ships templates you copy. This file is the other
+# option: one pipeline, called from many repositories, updated in one place.
+# docs/reuse.md explains when each is the right choice.
+#
+# Call it from another repository like this:
+#
+#   jobs:
+#     ci:
+#       uses: nrkdrk/cicd-pipeline-templates/.github/workflows/reusable-laravel.yml@v1
+#       with:
+#         working-directory: .
+#         image-name: ${{ github.repository }}
+#       permissions:
+#         contents: read
+#         packages: write
+#         id-token: write
+#
+# Pin the call to a tag or a SHA, never to a branch: @main means this repository
+# can change what runs in your pipeline without you doing anything.
+
+name: reusable-laravel
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Directory containing composer.json
+        type: string
+        default: '.'
+      php-versions:
+        description: JSON array of PHP versions to test against
+        type: string
+        default: '["8.2", "8.3"]'
+      image-name:
+        description: Image repository, without the registry prefix
+        type: string
+        required: true
+      registry:
+        description: Container registry
+        type: string
+        default: ghcr.io
+      push:
+        description: Push the image after a successful scan
+        type: boolean
+        default: true
+      trivy-severity:
+        description: Severities that fail the build
+        type: string
+        default: 'HIGH,CRITICAL'
+
+jobs:
+  test:
+    name: Test (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ${{ fromJSON(inputs.php-versions) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, xml, bcmath, pdo_sqlite, sqlite3
+          coverage: none
+
+      - name: Resolve Composer cache directory
+        id: composer-cache
+        working-directory: ${{ inputs.working-directory }}
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php${{ matrix.php }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php${{ matrix.php }}-
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.working-directory }}
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run tests
+        working-directory: ${{ inputs.working-directory }}
+        run: php artisan test
+
+  build:
+    name: Build and push image
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
+
+      - name: Log in to the container registry
+        if: inputs.push
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tags
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5
+        with:
+          images: ${{ inputs.registry }}/${{ inputs.image-name }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=sha,format=short
+
+      - name: Build the image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        with:
+          context: ${{ inputs.working-directory }}
+          file: ${{ inputs.working-directory }}/Dockerfile
+          push: false
+          load: true
+          tags: scan-target:${{ github.sha }}
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan the image
+        uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8  # master
+        with:
+          image-ref: scan-target:${{ github.sha }}
+          trivyignores: .trivyignore.yaml
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: ${{ inputs.trivy-severity }}
+
+      - name: Generate an SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610  # v0
+        with:
+          image: scan-target:${{ github.sha }}
+          format: spdx-json
+          artifact-name: sbom.spdx.json
+
+      - name: Push the image
+        id: push
+        if: inputs.push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        with:
+          context: ${{ inputs.working-directory }}
+          file: ${{ inputs.working-directory }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+          cache-from: type=gha
+
+      - name: Attest build provenance
+        if: inputs.push
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
+        with:
+          subject-name: ${{ inputs.registry }}/${{ inputs.image-name }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
