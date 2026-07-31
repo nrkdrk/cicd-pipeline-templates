@@ -1,3 +1,7 @@
 examples/** linguist-detectable=true
 *.yml linguist-detectable=true
 *.yaml linguist-detectable=true
+examples/**/*.php linguist-detectable=true
+examples/**/*.cs linguist-detectable=true
+examples/**/*.tsx linguist-detectable=true
+examples/**/*.ts linguist-detectable=true
