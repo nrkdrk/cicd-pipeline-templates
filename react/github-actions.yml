@@ -95,7 +95,40 @@ jobs:
             type=ref,event=branch
             type=sha,format=short
 
-      - name: Build and push
+      # Build locally first so the image can be inspected before anyone can pull it.
+      - name: Build the image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.WORKING_DIRECTORY }}
+          file: ${{ env.WORKING_DIRECTORY }}/Dockerfile
+          push: false
+          load: true
+          tags: scan-target:${{ github.sha }}
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Fails the job on HIGH and CRITICAL findings, before the image is public.
+      - name: Scan the image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: scan-target:${{ github.sha }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      # Answers "do we ship the affected package?" on the day a CVE lands.
+      - name: Generate an SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: scan-target:${{ github.sha }}
+          format: spdx-json
+          artifact-name: sbom.spdx.json
+
+      # Every layer is already cached from the build above, so this is fast.
+      - name: Push the image
         id: push
         uses: docker/build-push-action@v6
         with:
@@ -107,7 +140,15 @@ jobs:
           build-args: |
             APP_VERSION=${{ github.ref_name }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+
+      # Records which repository, commit and workflow produced this image.
+      #   gh attestation verify oci://ghcr.io/OWNER/REPO:TAG --owner OWNER
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3

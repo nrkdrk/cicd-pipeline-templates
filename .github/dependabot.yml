@@ -1,0 +1,39 @@
+# Pinning actions to a SHA freezes them, which is the point - but frozen also
+# means unpatched. Dependabot understands SHA pins with a version comment and
+# opens a pull request when the tag moves, so the pin stays deliberate rather
+# than forgotten.
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # One pull request for all of them; reviewing ten separate bumps is how
+      # this ends up ignored.
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directories:
+      - /laravel
+      - /dotnet
+      - /react
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: composer
+    directory: /examples/laravel-app
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: nuget
+    directory: /examples/dotnet-api
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: npm
+    directory: /examples/react-app
+    schedule:
+      interval: monthly
