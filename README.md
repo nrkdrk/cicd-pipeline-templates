@@ -61,21 +61,6 @@ manager, no compiler and no dev dependencies to exploit.
 | Scenario | Time |
 |---|---|
 | Cold build, `--no-cache` | 43.9 s |
-| Application source changed | TODO s |
-| Nothing changed, every layer cached | 3.3 s |
-
-The middle row is the one that matters, because it is what happens on almost
-every commit. Copying `composer.json` before the rest of the source means a
-change to application code does not reinstall the dependencies. Note that Docker
-compares file contents, not timestamps - `touch` alone will not invalidate a
-layer. GitHub Actions gets the same effect across runs through
-`cache-from: type=gha` in the build job.
-
-### Build time, Laravel template
-
-| Scenario | Time |
-|---|---|
-| Cold build, `--no-cache` | 43.9 s |
 | Application source changed | 7.5 s |
 | Nothing changed, every layer cached | 3.3 s |
 
