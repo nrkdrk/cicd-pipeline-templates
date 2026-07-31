@@ -1,0 +1,23 @@
+# Findings that cannot be fixed here, with a reason and an expiry date.
+# Trivy reports an expired entry again, so an exception has to be renewed
+# deliberately rather than forgotten. Nothing goes in this file without a
+# statement explaining why the code path is unreachable in this image.
+
+vulnerabilities:
+  - id: GHSA-r277-6w6q-xmqw
+    paths:
+      - usr/local/bin/frankenphp
+    statement: >-
+      kin-openapi is compiled into the FrankenPHP binary through Caddy. The
+      affected code is Caddy's OpenAPI validation handler, which this image does
+      not configure and never calls. No fixed FrankenPHP release exists yet.
+    expired_at: 2026-09-30
+
+  - id: GHSA-hrxh-6v49-42gf
+    paths:
+      - usr/local/bin/frankenphp
+    statement: >-
+      gRPC-Go is compiled into the FrankenPHP binary. The affected features are
+      xDS RBAC and the gRPC admin surface; this image serves plain HTTP and
+      enables neither. No fixed FrankenPHP release exists yet.
+    expired_at: 2026-09-30
