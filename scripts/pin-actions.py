@@ -48,20 +48,29 @@ def request(url: str) -> dict | None:
         return None
 
 
+_cache: dict[tuple[str, str], str | None] = {}
+
 def resolve(repo: str, ref: str) -> str | None:
     """Resolve a tag or branch to the commit SHA it currently points at."""
+    if (repo, ref) in _cache:
+        return _cache[(repo, ref)]
+
+    sha = None
     reference = request(f"{API}/repos/{repo}/git/ref/tags/{ref}")
     if reference:
         target = reference["object"]
         # Annotated tags point at a tag object, which points at the commit.
         if target["type"] == "tag":
             tag = request(f"{API}/repos/{repo}/git/tags/{target['sha']}")
-            return tag["object"]["sha"] if tag else None
-        return target["sha"]
+            sha = tag["object"]["sha"] if tag else None
+        else:
+            sha = target["sha"]
+    else:
+        commit = request(f"{API}/repos/{repo}/commits/{ref}")
+        sha = commit["sha"] if commit else None
 
-    commit = request(f"{API}/repos/{repo}/commits/{ref}")
-    return commit["sha"] if commit else None
-
+    _cache[(repo, ref)] = sha
+    return sha
 
 def process(path: Path, check_only: bool) -> tuple[int, int]:
     original = path.read_text()
